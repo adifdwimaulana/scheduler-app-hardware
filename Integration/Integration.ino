@@ -413,7 +413,7 @@ void loop(){
         checkState = true;
       } else if(digitalRead(checkBtn) == HIGH && checkState == true){
         lcd.setCursor(0,1);
-        lcd.print("Tempelkan Jari...");
+        lcd.print("Tempelkan Jari Lagi");
         checkState = true;  
       } else if(digitalRead(checkBtn) == LOW && checkState == true){
         lcd.setCursor(0,1);
