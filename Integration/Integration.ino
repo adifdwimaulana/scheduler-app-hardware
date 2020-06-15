@@ -19,8 +19,10 @@ RTC_DS1307 rtc;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
-const int checkBtn = D5;
-const int regisBtn = D6;
+const int checkBtn = 14; //D5 //Pencet == LOW
+const int regisBtn = 12; //D6 //Pencet == LOW
+bool checkState = false;
+bool regisState = false;
 
 
 // void printResult(FirebaseData &data);
@@ -34,9 +36,9 @@ char daysOfTheWeek[7][12] = {"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Juma
 size_t len;
 
 // Global vars Data Jadwal dan Dosen
-String aNamaMatkul, aDosen, aStart, aEnd, aRuangan;
-String bNamaMatkul, bDosen, bStart, bEnd, bRuangan;
-String cNamaMatkul, cDosen, cStart, cEnd, cRuangan;
+String aNamaMatkul, aDosen, aId, aStart, aEnd, aRuangan;
+String bNamaMatkul, bDosen, bId, bStart, bEnd, bRuangan;
+String cNamaMatkul, cDosen, cId, cStart, cEnd, cRuangan;
 int matkulCount;
 
 String aDosenId, aDosenNama, aDosenNip;
@@ -120,7 +122,8 @@ void setup()
   finger.getTemplateCount();
 
     if (finger.templateCount == 0) {
-    Serial.print("Sensor doesn't contain any fingerprint data. Please run the 'enroll' example.");
+     Serial.print("Sensor doesn't contain any fingerprint data. Please run the 'enroll' example.");
+    lcd.print("Sensor not found");
   } 
   else {
     Serial.println("Waiting for valid finger...");
@@ -210,15 +213,10 @@ void printResult(FirebaseData &data)
         len = json.iteratorBegin();
         String key, value = "";
         int type = 0;
-//        Serial.print("Size = ");
-//        Serial.println(len);
+        matkulCount = len;
         for (size_t i = 0; i < len; i++)
         {
             json.iteratorGet(i, type, key, value);
-//            Serial.print(i);
-//            Serial.print(", ");
-//            Serial.print("Type: ");
-//            Serial.print(type == FirebaseJson::JSON_OBJECT ? "object" : "array");
             if (type == FirebaseJson::JSON_OBJECT)
             {
 //                Serial.print(", Key: ");
@@ -226,34 +224,48 @@ void printResult(FirebaseData &data)
             }
 //            Serial.print(", Value: ");
 //            Serial.println(value);
-            if(len <= 6){
-              if(i == 0){
-                
-              } else if(i == 1){
-                aDosen = value;
-              } else if(i == 2){
-                aEnd = value;
+            if(len <= 8){
+              if(i == 2){
+                aId = value;
               } else if(i == 3){
-                aNamaMatkul = value;
+                aDosen = value;
               } else if(i == 4){
-                aRuangan = value;
+                aEnd = value;
               } else if(i == 5){
+                aNamaMatkul = value;
+              } else if(i == 6){
+                aRuangan = value;
+              } else if(i == 7){
                 aStart = value;
               }  
-            } else if(len > 6 && len <= 12){
-              if(i-6 == 0){
-                
-              } else if(i-6 == 1){
+            } else if(len > 8 && len <= 16){
+              if(i-8 == 2){
+                bId = value;
+              } else if(i-8 == 3){
                 bDosen = value;
-              } else if(i-6 == 2){
+              } else if(i-8 == 4){
                 bEnd = value;
-              } else if(i-6 == 3){
+              } else if(i-8 == 5){
                 bNamaMatkul = value;
-              } else if(i-6 == 4){
+              } else if(i-8 == 6){
                 bRuangan = value;
-              } else if(i-6 == 5){
+              } else if(i-8 == 7){
                 bStart = value;
-              }
+              } 
+            } else if(len > 16 && len <= 24){
+              if(i-16 == 2){
+                cId = value;
+              } else if(i-16 == 3){
+                cDosen = value;
+              } else if(i-16 == 4){
+                cEnd = value;
+              } else if(i-16 == 5){
+                cNamaMatkul = value;
+              } else if(i-16 == 6){
+                cRuangan = value;
+              } else if(i-16 == 7){
+                cStart = value;
+              } 
             }
             
         }
@@ -330,22 +342,16 @@ void loop(){
   lcd.print(currentMonth);
   lcd.print("-");
   lcd.print(currentYear);
+  
   // URL    
   today.toLowerCase();
   path = "/" + String(deviceId) + "/matkul/" + today;
-//  path = "/" + String(deviceId) + "/matkul/selasa";
    if (Firebase.get(firebaseData, path)){
-//        Serial.println("PASSED");
-//        Serial.println("PATH: " + firebaseData.dataPath());
-//        Serial.println("TYPE: " + firebaseData.dataType());
-//        Serial.print("VALUE: ");
         if (firebaseData.dataType() == "json")
         {
             jsonStr = firebaseData.jsonString();
             printResult(firebaseData);
         }
-//        Serial.println("------------------------------------");
-//        Serial.println();
     }
     else
     {
@@ -354,12 +360,37 @@ void loop(){
         Serial.println("------------------------------------");
         Serial.println();
     }
+
+      String startHour;
+      String startMinute;
+      String endHour;
+      String endMinute;
+      String currentMatkul;
+      String currentDosenId;
+      
+    if(matkulCount <= 6){
+      startHour = getValue(aStart, ':', 0);
+      startMinute = getValue(aStart, ':', 1);
+      endHour = getValue(aEnd, ':', 0);
+      endMinute = getValue(aEnd, ':', 1);
+      currentMatkul = aNamaMatkul;
+      currentDosenId = aId;
+    } else if(matkulCount > 6 && matkulCount <= 12){
+      startHour = getValue(bStart, ':', 0);
+      startMinute = getValue(bStart, ':', 1);
+      endHour = getValue(bEnd, ':', 0);
+      endMinute = getValue(bEnd, ':', 1);  
+      currentMatkul = bNamaMatkul;
+      currentDosenId = bId;
+    } else if(matkulCount > 12 && matkulCount <= 18){
+      startHour = getValue(cStart, ':', 0);
+      startMinute = getValue(cStart, ':', 1);
+      endHour = getValue(cEnd, ':', 0);
+      endMinute = getValue(cEnd, ':', 1);
+      currentMatkul = cNamaMatkul;      
+      currentDosenId = cId;  
+    }
     
-    
-    String startHour = getValue(aStart, ':', 0);
-    String startMinute = getValue(aStart, ':', 1);
-    String endHour = getValue(aEnd, ':', 0);
-    String endMinute = getValue(aEnd, ':', 1);
     bool isAdaDosen = false;
     if(currentHour >= startHour.toInt() && (currentHour <= endHour.toInt() && currentMinute <= endMinute.toInt())){
       Serial.print("Mata Kuliah: ");
@@ -370,29 +401,71 @@ void loop(){
       Serial.println(aStart);
       Serial.print("End Hour = ");
       Serial.println(aEnd);
-      if(isAdaDosen == false){
+      if(digitalRead(checkBtn) == HIGH && checkState == false){
         lcd.setCursor(0,1);
         lcd.print("Menunggu Dosen...");
+        checkState = false;
         // Relay Mati
-      } else {
+      } else if(digitalRead(checkBtn) == LOW && checkState == false) {
         // Button Pencet
-        getFingerprintIDez();
-        delay(1000);  
-
         lcd.setCursor(0,1);
-        lcd.print("Ada Kuliah...");
-
-        // Relay Nyala
+        lcd.print("Tempelkan Jari...");
+        checkState = true;
+      } else if(digitalRead(checkBtn) == HIGH && checkState == true){
+        lcd.setCursor(0,1);
+        lcd.print("Tempelkan Jari...");
+        checkState = true;  
+      } else if(digitalRead(checkBtn) == LOW && checkState == true){
+        lcd.setCursor(0,1);
+        lcd.print("Menunggu Dosen...");
+        checkState = false;  
       }
-      
     } else {
       Serial.println("TIDAK ADA KULIAH");  
       lcd.setCursor(0,1);
       lcd.print("Menunggu Kuliah");
+      if(digitalRead(checkBtn) == LOW){
+        lcd.setCursor(0,1);
+        lcd.print("Tidak Bisa Login");  
+      }
     }
+    Serial.print("State = ");
+    Serial.println(digitalRead(checkBtn));
+
+    while(checkState == true){
+      int dosenId = getFingerprintIDez();
+      delay(50);
+      Serial.print("Id = ");
+      Serial.println(dosenId);
+      if(dosenId == currentDosenId.toInt()){
+        lcd.setCursor(1, 0);
+        lcd.print("Berhasil Login");
+        // Relay Menyala
+
+
+        checkState == false;
+        break;
+      }
+      
+//      if(dosenId == currentDosenId){
+//        Serial.print("Id = ");
+//        Serial.println(dosenId);
+//        lcd.setCursor(0,1);
+//        lcd.print("Berhasil !!");
+//        delay(1500);  
+//        lcd.setCursor(0,1);
+//        lcd.print("Ada Kuliah...");
+//        // Relay Nyala
+//        checkState = false;  
+//      }
+      
+    
+    }
+
+    // Register Function
     
     
-  delay(3000);
+  delay(100);
 }
 
 /////////////////////CHECK//////////////////
