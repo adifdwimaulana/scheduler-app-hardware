@@ -11,6 +11,8 @@
 #define FIREBASE_HOST "finger-scheduler.firebaseio.com" //Without http:// or https:// schemes
 #define FIREBASE_AUTH "Ad5JNpZqepilbQQGgMTE6dzR9DcmiXqDr1cPITjZ"
 
+FirebaseJson json;
+
 //Define Firebase Data object
 FirebaseData firebaseData;
 SoftwareSerial mySerial(0, 2); //D3, D4
@@ -45,7 +47,10 @@ String aDosenId, aDosenNama, aDosenNip;
 String bDosenId, bDosenNama, bDosenNip;
 String cDosenId, cDosenNama, cDosenNip;
 
-uint8_t id;
+int id;
+int startFetch = 3000;
+int startTime = 50;
+int blinkState = 0;
 
 void setup()
 {
@@ -79,7 +84,7 @@ void setup()
   lcd.print("Scheduler App");
   delay(1000);
   lcd.setCursor(0,0);
-  lcd.print("Ruangan JJ209");
+  lcd.print("Ruangan JJ208");
   lcd.setCursor(0,1);
   lcd.print("Device Id = ");
   lcd.setCursor(12, 1);
@@ -136,6 +141,7 @@ void setup()
 //    FirebaseJson json1;
 //
 //    FirebaseJsonData jsonObj;
+//      json.set("id", 200);
 //
 //    json1.set("Hi/myInt", 200);
 //    json1.set("Hi/myDouble", 0.0023);
@@ -331,27 +337,62 @@ void loop(){
   int currentHour = now.hour();
   int currentMinute = now.minute();
   int currentSecond = now.second();
-  String currentTime = String(currentHour) + ":" + String(currentMinute) + ":" + String(currentSecond);
+  String stringMinute = String(currentMinute);
+  String stringSecond = String(currentSecond);
+  String stringHour = String(currentHour);
+  if(currentMinute < 10){
+    stringMinute = "0" + stringMinute;
+  }
+  if(currentSecond < 10){
+    stringSecond = "0" + stringSecond;
+  }
+  if(currentHour < 10){
+    stringHour = "0" + stringHour;  
+  }
+  String currentTime = stringHour + ":" + stringMinute + ":" + stringSecond;
   Serial.println(currentTime);
-  
-  lcd.setCursor(0,0);
-  lcd.print(today);
-  lcd.print(" ");
-  lcd.print(currentDate);
-  lcd.print("-");
-  lcd.print(currentMonth);
-  lcd.print("-");
-  lcd.print(currentYear);
+  Serial.print("Fetch = ");
+  Serial.println(startFetch);
+  Serial.print("Time = ");
+  Serial.println(startTime);
+  Serial.print("Blink = ");
+  Serial.println(blinkState);
+
+//  lcd.setCursor(0,0);
+//  lcd.print(today);
+//  lcd.print(" ");
+//  lcd.print(currentTime);
+  if(startTime % 10 == 0){
+    lcd.clear();
+      if(blinkState % 2 == 0){
+        lcd.setCursor(0,0);
+        lcd.print(today);
+        lcd.print(" ");
+        lcd.print(currentTime);        
+      } else {
+        lcd.setCursor(0,0);
+        lcd.print(today);
+        lcd.print(" ");
+        lcd.print(currentDate);
+        lcd.print("-");
+        lcd.print(currentMonth);
+        lcd.print("-");
+        lcd.print(currentYear);      
+      }
+      blinkState++;
+  }
   
   // URL    
   today.toLowerCase();
   path = "/" + String(deviceId) + "/matkul/" + today;
+  if(startFetch % 3000 == 0){
    if (Firebase.get(firebaseData, path)){
         if (firebaseData.dataType() == "json")
         {
             jsonStr = firebaseData.jsonString();
             printResult(firebaseData);
         }
+        Serial.println("Fetching Data Success ...");
     }
     else
     {
@@ -359,7 +400,9 @@ void loop(){
         Serial.println("REASON: " + firebaseData.errorReason());
         Serial.println("------------------------------------");
         Serial.println();
-    }
+    } 
+  }
+   
 
       String startHour;
       String startMinute;
@@ -403,34 +446,34 @@ void loop(){
       Serial.println(aEnd);
       if(digitalRead(checkBtn) == HIGH && checkState == false){
         lcd.setCursor(0,1);
-        lcd.print("Menunggu Dosen...");
+        lcd.print("Menunggu Dosen...   ");
         checkState = false;
         // Relay Mati
       } else if(digitalRead(checkBtn) == LOW && checkState == false) {
         // Button Pencet
         lcd.setCursor(0,1);
-        lcd.print("Tempelkan Jari...");
+        lcd.print("Tempelkan Jari...   ");
         checkState = true;
       } else if(digitalRead(checkBtn) == HIGH && checkState == true){
         lcd.setCursor(0,1);
-        lcd.print("Tempelkan Jari Lagi");
+        lcd.print("Tempelkan Jari Lagi ");
         checkState = true;  
       } else if(digitalRead(checkBtn) == LOW && checkState == true){
         lcd.setCursor(0,1);
-        lcd.print("Menunggu Dosen...");
+        lcd.print("Menunggu Dosen...   ");
         checkState = false;  
       }
     } else {
       Serial.println("TIDAK ADA KULIAH");  
       lcd.setCursor(0,1);
-      lcd.print("Menunggu Kuliah");
+      lcd.print("Menunggu Kuliah ");
       if(digitalRead(checkBtn) == LOW){
         lcd.setCursor(0,1);
         lcd.print("Tidak Bisa Login");  
       }
     }
-    Serial.print("State = ");
-    Serial.println(digitalRead(checkBtn));
+    Serial.print("Check State = ");
+    Serial.println(checkState);
 
     while(checkState == true){
       int dosenId = getFingerprintIDez();
@@ -446,25 +489,44 @@ void loop(){
         checkState == false;
         break;
       }
-      
-//      if(dosenId == currentDosenId){
-//        Serial.print("Id = ");
-//        Serial.println(dosenId);
-//        lcd.setCursor(0,1);
-//        lcd.print("Berhasil !!");
-//        delay(1500);  
-//        lcd.setCursor(0,1);
-//        lcd.print("Ada Kuliah...");
-//        // Relay Nyala
-//        checkState = false;  
-//      }
-      
-    
     }
 
     // Register Function
+    if(digitalRead(regisBtn) == LOW && regisState == false){
+      regisState = true;
+      lcd.setCursor(0,1);
+      lcd.print("Registrasi !!!");
+    } else if(digitalRead(regisBtn) == HIGH && regisState == false){
+      regisState = false;  
+    } else if(digitalRead(regisBtn) == HIGH && regisState == true){
+      regisState = true;  
+    } else if(digitalRead(regisBtn) == LOW && regisState == true){
+      regisState = false;  
+    }
+
+    Serial.print("Regis State = ");
+    Serial.println(regisState);
+
+    if(regisState == true){
+      lcd.setCursor(0,1);
+      lcd.print("Tempelkan Jari !!");  
+      delay(2000); 
+    }
+
+    while(regisState == true){
+        id = readnumber();
+        id++;
+        Serial.print("Enrolling ID #");
+        Serial.println(id);
+        json.set("id", id);
+        
+        
+        while (!  getFingerprintEnroll() );
+    }
     
-    
+  startFetch++;
+  startTime++;
+//  lcd.clear();
   delay(100);
 }
 
@@ -489,7 +551,7 @@ void loop(){
         return p;
     }
   
-    // OK success!
+    // OK success! 
   
     p = finger.image2Tz();
     switch (p) {
@@ -556,9 +618,9 @@ void loop(){
 /////////////////////ENROL//////////////////
 
 uint8_t readnumber(void) {
-  uint8_t num = 0;
+  uint8_t num;
 
-  if (Firebase.getInt(firebaseData, "/1/count")) {
+  if (Firebase.getInt(firebaseData, "/" + String(deviceId) + "/count")) {
     if (firebaseData.dataType() == "int") {
       num = firebaseData.intData();
       Serial.println(firebaseData.intData());
@@ -620,6 +682,9 @@ uint8_t getFingerprintEnroll() {
   }
   
   Serial.println("Remove finger");
+  lcd.clear();
+  lcd.setCursor(0,1);
+  lcd.print("Berhasil"); 
   delay(2000);
   p = 0;
   while (p != FINGERPRINT_NOFINGER) {
@@ -628,6 +693,8 @@ uint8_t getFingerprintEnroll() {
   Serial.print("ID "); Serial.println(id);
   p = -1;
   Serial.println("Place same finger again");
+  lcd.setCursor(0,1);
+  lcd.print("Tempelkan Lagi !!"); 
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
     switch (p) {
@@ -650,6 +717,9 @@ uint8_t getFingerprintEnroll() {
   }
 
   // OK success!
+  lcd.clear();
+  lcd.setCursor(0,1);
+  lcd.print("Angkat !!"); 
 
   p = finger.image2Tz(2);
   switch (p) {
@@ -694,6 +764,8 @@ uint8_t getFingerprintEnroll() {
   p = finger.storeModel(id);
   if (p == FINGERPRINT_OK) {
     Serial.println("Stored!");
+    lcd.setCursor(0,1);
+    lcd.print("ID = " + id); 
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
     return p;
@@ -706,5 +778,21 @@ uint8_t getFingerprintEnroll() {
   } else {
     Serial.println("Unknown error");
     return p;
-  }   
+  }  
+    if (Firebase.setInt(firebaseData, "/" + String(deviceId) + "/count", id))
+    {
+      printResult(firebaseData);
+    }
+    if (Firebase.push(firebaseData, "/" + String(deviceId) + "/dosen", json))
+    {
+      lcd.clear();  
+      lcd.setCursor(0,0);
+      lcd.print("Ruangan JJ208"); 
+      lcd.setCursor(0,1);
+      lcd.print("ID = " + id);
+      delay(3000);
+    }
+    
+    
+  regisState = false; 
 }
