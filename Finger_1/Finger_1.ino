@@ -1,4 +1,3 @@
-cmd
 //FirebaseESP8266.h must be included before ESP8266WiFi.h
 #include "FirebaseESP8266.h"
 #include <ESP8266WiFi.h>
@@ -9,8 +8,8 @@ cmd
 
 #define WIFI_SSID "KONTRAKAN ANAK2"
 #define WIFI_PASSWORD "bukaopen"
-#define FIREBASE_HOST "finger-scheduler.firebaseio.com" //Without http:// or https:// schemes
-#define FIREBASE_AUTH "Ad5JNpZqepilbQQGgMTE6dzR9DcmiXqDr1cPITjZ"
+#define FIREBASE_HOST "scheduler-ppns.firebaseio.com" //Without http:// or https:// schemes
+#define FIREBASE_AUTH "OyLtyWzOHTXf1Xxoh5KdZeV8W9wguw7sFICAnUII"
 
 FirebaseJson json;
 
@@ -548,13 +547,16 @@ void loop(){
         daruratCount = 0;
         pintuTutup(); 
       }
+      kontaktorNyala();
       Serial.print("Darurat State = "); Serial.println(daruratState);
       Serial.print("Login Count = "); Serial.println(loginCount);
       Serial.print("Darurat Count = "); Serial.println(daruratCount);
       loginCount++;  
       delay(1000);
     }
-    
+
+  kontaktorMati();
+  
   startFetch++;
   startTime++;
 //  lcd.clear();
@@ -596,10 +598,12 @@ void selesaiKuliah(int time){
     lcd.setCursor(0,1);
     lcd.print("Tinggalkan Kelas");
     pintuBuka();
+    kontaktorNyala();
     delay(1000);  
   }
   lcd.clear();
   pintuTutup();
+  kontaktorMati();
   login = false;
   checkState = false;
   finishKuliah++;
@@ -611,6 +615,14 @@ void pintuBuka(){
 
 void pintuTutup(){
   digitalWrite(door, LOW);  
+}
+
+void kontaktorNyala(){
+  digitalWrite(contactor, LOW);   
+}
+
+void kontaktorMati(){
+  digitalWrite(contactor, HIGH);  
 }
 
 
